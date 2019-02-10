@@ -1,0 +1,70 @@
+<!DOCtype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>ChatLogger.JS</title>
+    <script>
+    var config = {};
+    var ipcRenderer = require('electron').ipcRenderer;
+    ipcRenderer.on('updateConfigValues', function (event,logConfig) {
+        config = logConfig;
+        Object.keys(logConfig).forEach(function (key) {
+            document.getElementById(key).value = logConfig[key];
+        });
+    });
+    ipcRenderer.on('updateDirectoryValue', function (event, directory) {
+        document.getElementById('logDirectory').value = directory;
+    });
+    
+    function browseClick() {
+        ipcRenderer.send('browseDirectory');
+    }
+    function saveConfig() {
+        var newConfig = {};
+        Object.keys(config).forEach(function (key) {
+            newConfig[key] = document.getElementById(key).value
+        });
+        ipcRenderer.send('update-config', newConfig);
+    }
+    </script>
+  </head>
+  <body>
+    <table border="0" width="100%">
+      <tr>
+        <td width="35%">Log directory:</td>
+        <td>
+          <input type="text" id="logDirectory" size="23"/>
+          <button id="btnOpen" onclick="browseClick()">Browse</button>
+        </td>
+      </tr>
+      <tr>
+        <td width="35%">Filename format:</td>
+        <td><input type="text" id="fileFormat" size="33"/></td>
+      </tr>
+      <tr>
+        <td width="35%">Invalid char replacement:</td>
+        <td><input type="text" id="invalidCharReplacement" size="33"/></td>
+      </tr>
+      <tr>
+        <td width="35%">Message format:</td>
+        <td><input type="text" id="messageFormat" size="33"/></td>
+      </tr>
+      <tr>
+        <td width="35%">Separation string:</td>
+        <td><input type="text" id="seperationString" size="33"/></td>
+      </tr>
+      <tr>
+        <td width="35%">Date format:</td>
+        <td><input type="text" id="dateFormat" size="33"/></td>
+      </tr>
+      <tr>
+        <td width="35%">Time format:</td>
+        <td><input type="text" id="timeFormat" size="33"/></td>
+      </tr>
+      <tr>
+        <td width="35%"></td>
+        <td><input type="submit" value="Save" name="B1" onclick="saveConfig()" style="float: right;"/></td>
+      </tr>
+    </table>
+  </body>
+</html>
