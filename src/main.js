@@ -5,6 +5,11 @@ let tray = undefined;
 let window = undefined;
 let force_quit = false;
 
+const forceQuit = () => {
+    force_quit = true;
+    app.quit();
+};
+
 if(require('electron-squirrel-startup')) { // eslint-disable-line global-require
     forceQuit();
 }
@@ -168,11 +173,6 @@ const showWindow = () => {
     window.show();
     window.focus();
 };
-
-const forceQuit = () => {
-    force_quit = true;
-    app.quit();
-}
 
 ipcMain.on('logOut', (event) => {
     logOut();
