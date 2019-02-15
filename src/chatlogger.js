@@ -7,11 +7,32 @@ const path = require('path');
 var endOfLine = require('os').EOL;
 
 var client = new SteamUser();
+var steamUserName;
 var appPath = "";
-var loginDataFile = './logindata.json';
-var mainLoginData = {};
-var loginPrompt;
-var sgPrompt;
+//Default login prompts for running through console.
+var loginPrompt = function () {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    rl.question('Steam Username: ', (value) => {
+        steamUserName = value;
+        rl.question('Steam Password: ', (value) => {
+            loginToSteam({username:steamUserName,password:value});
+            rl.close();
+        });
+    });
+};
+var sgPrompt = function (callback) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    rl.question('SteamGuard Code: ', (value) => {
+        callback(value);
+    });
+};
+
 module.exports = {
   setAppPath: function (path) {
     appPath = path;
@@ -29,9 +50,6 @@ module.exports = {
   getSteamClient: function () {
     return client;
   },
-  getLoginData: function () {
-    return mainLoginData;
-  },
   setLoginPrompt: function (loginFunction) {
     loginPrompt = loginFunction;
   },
@@ -43,6 +61,10 @@ module.exports = {
   },
   login: function (newLoginData) {
     loginToSteam(newLoginData);
+  },
+  logout: function () {
+    client.logOff();
+    loginToSteam(null);
   }
 };
 
@@ -57,14 +79,15 @@ var config = {
   "timeFormat":"LT"
 };
 
-var steamUserName;
 var logData = {};
 var logDataFile = "logData.json";
+var loginDataFile = 'logindata.json';
 function runApp() {
+    createDirIfNotExists(path.join(appPath, "logdata"));
     getConfig();
-
     logData = {};
-    logDataFile = path.join(appPath, "logData.json");
+    logDataFile = path.join(appPath, "logdata", "logData.json");
+    loginDataFile = path.join(appPath, "logdata", "logindata.json");
     getLogData();
 
     if(fs.existsSync(loginDataFile)) {
@@ -84,34 +107,23 @@ function runApp() {
 }
 
 function loginToSteam(loginData) {
-    mainLoginData = loginData;
     if(loginData !== null) {
         steamUserName = loginData.username;
         if('key' in loginData) {
             client.logOn({
                 "accountName": loginData.username,
-                "rememberPassword": "true",
+                "rememberPassword": true,
                 "loginKey": loginData.key
             });
         } else {
             client.logOn({
                 "accountName": steamUserName,
                 "password": loginData.password,
-                "rememberPassword": "true"
+                "rememberPassword": true
             });
         }
     } else {
         loginPrompt();
-        /*const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
-        rl.question('Steam Username: ', (value) => {
-            steamUserName = value;
-            rl.question('Steam Password: ', (value) => {
-                rl.close();
-            });
-        });*/
     }
 }
 
@@ -162,9 +174,9 @@ function userChat(friendSteam, sender, message) {
         }
         if('logFile' in logData[steam64]) {
             if(logData[steam64].logFile !== fileName) {
-                if(fs.existsSync(loginDataFile)) {
+                if(fs.existsSync(logData[steam64].logFile)) {
                     //Rename old file before appending text message, only if something in the filename changed.
-                    fs.renameSync(path.join(config.logDirectory, logData[steam64].logFile), config.logDirectory + "/" + fileName);
+                    fs.renameSync(path.join(config.logDirectory, logData[steam64].logFile), path.join(config.logDirectory, fileName));
                 }
             }
         }
@@ -256,7 +268,7 @@ function getLogData() {
 }
 
 function getConfig() {
-    var configFile = path.join(appPath, "config.json");
+    var configFile = path.join(appPath, "logdata", "config.json");
     if(fs.existsSync(configFile)) {
         fs.readFile(configFile, (err, data) => {
             if(err) {
@@ -264,19 +276,25 @@ function getConfig() {
             }
             try {
                 config = JSON.parse(data);
-                if(!fs.existsSync(config.logDirectory)) {
-                    fs.mkdirSync(config.logDirectory, {recursive: true});
-                }
+                createDirIfNotExists(config.logDirectory);
             } catch (e) {
                 //Do nothing I guess?
             }
         });
     } else {
-        config.logDirectory = path.join(appPath, "logs");
+        config.logDirectory = path.join(appPath, "logdata", "logs");
+        createDirIfNotExists(config.logDirectory);
+        fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
     }
 }
 
 function saveConfig() {
-    var configFile = path.join(appPath, "config.json");
+    var configFile = path.join(appPath, "logdata", "config.json");
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+}
+
+function createDirIfNotExists(directory) {
+    if(!fs.existsSync(directory)) {
+        fs.mkdirSync(directory, {recursive: true});
+    }
 }

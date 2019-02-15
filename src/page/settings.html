@@ -1,0 +1,62 @@
+<!DOCtype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" http-equiv="Content-Security-Policy" content="script-src 'self'">
+    <title>ChatLogger.JS</title>
+    <link href="settings.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <table border=0>
+      <tr>
+        <td><label for="logDirectory">Log Directory:</label></td>
+        <td>
+        <button id="btnOpen" onclick="browseClick()" style="float:right;">Browse</button>
+        <div style="overflow: hidden; padding-right: .5em;">
+            <input type="text" id="logDirectory" style="width: 100%;"/>
+        </div>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="fileFormat">File Format:</label></td>
+        <td><input type="text" id="fileFormat"/>
+        <div class="preview" id="fileFormatPreview"></div>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="invalidCharReplacement">Invalid Char Replacement:</label></td>
+        <td><input type="text" id="invalidCharReplacement"/></td>
+      </tr>
+      <tr><td colspan=2><hr/></td></tr>
+      <tr>
+        <td><label for="messageFormat">Message Format:</label></td>
+        <td><input type="text" id="messageFormat"/>
+        <div class="preview" id="messageFormatPreview"></div>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="seperationString">Separation String:</label></td>
+        <td><input type="text" id="seperationString"/></td>
+      </tr>
+      <tr><td colspan=2><hr/></td></tr>
+      <tr>
+        <td><label for="dateFormat">Date Format:</label></td>
+        <td><input type="text" id="dateFormat"/>
+        <div class="preview" id="dateFormatPreviewTime"></div>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="timeFormat">Time Format:</label></td>
+        <td><input type="text" id="timeFormat"/>
+        <div class="preview" id="timeFormatPreviewTime"></div>
+        </td>
+      </tr>
+      <tr><td colspan=2><hr/></td></tr>
+      <tr>
+        <td>
+        <button id="btnLogout" style="float:left;">Logout</button></td>
+        <td><input type="submit" value="Save" id="btnSave" class="save"/></td>
+      </tr>
+    </table>
+  </body>
+  <script src="settings.js"></script>
+</html>
