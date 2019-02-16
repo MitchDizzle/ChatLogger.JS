@@ -5,11 +5,12 @@
   "description": "A node.js based steam chat logger.",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
-    "lint": "eslint src --color"
+    "start": "npm run pre-start && electron-forge start",
+    "package": "npm run pre-start && electron-forge package",
+    "make": "npm run pre-start && electron-forge make",
+    "publish": "npm run pre-start && electron-forge publish",
+    "lint": "eslint src --color",
+    "pre-start": "node prebuild.js"
   },
   "keywords": [],
   "author": "Mitchell Gardner",
@@ -31,7 +32,10 @@
       "electronPackagerConfig": {
         "packageManager": "npm",
         "icon": "src/icons/app.ico",
-        "ignore": [".gitignore", "logdata"]
+        "ignore": [
+          ".gitignore",
+          "logdata"
+        ]
       },
       "electronWinstallerConfig": {
         "name": "ChatLoggerJS"
@@ -49,13 +53,15 @@
     }
   },
   "dependencies": {
-    "electron-prompt": "^1.3.0",
+    "keytar": "^4.4.0",
     "moment": "^2.24.0",
-    "steam-user": "^4.2.0",
-    "electron-compile": "^6.4.4",
-    "electron-squirrel-startup": "^1.0.0"
+    "steam-user": "^4.2.0"
   },
   "devDependencies": {
+    "electron-compile": "^6.4.4",
+    "electron-prompt": "^1.3.0",
+    "electron-squirrel-startup": "^1.0.0",
+    "showdown": "^1.9.0",
     "babel-plugin-transform-async-to-generator": "^6.24.1",
     "babel-preset-env": "^1.7.0",
     "babel-preset-react": "^6.24.1",

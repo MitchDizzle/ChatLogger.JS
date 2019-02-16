@@ -4,9 +4,13 @@ const moment = require('moment');
 const SteamUser = require('steam-user');
 const readline = require('readline');
 const path = require('path');
+const SteamID = require('steamid');
+const keytar = require('keytar');
 var endOfLine = require('os').EOL;
 
-var client = new SteamUser();
+var client = new SteamUser({
+    "machineIdType":"PersistentRandom"
+});
 var steamUserName;
 var appPath = ".";
 //Default login prompts for running through console.
@@ -82,53 +86,70 @@ var config = {
 
 var logData = {};
 var logDataFile = "logData.json";
-var loginDataFile = 'logindata.json';
 var configFile = 'config.json';
+var scriptFileName = path.basename(__filename);
 function runApp() {
     var logdataDir = path.join(appPath, "logdata");
     createDirIfNotExists(logdataDir);
     logData = {};
     logDataFile = path.join(logdataDir, "logData.json");
-    loginDataFile = path.join(logdataDir, "logindata.json");
     configFile = path.join(logdataDir, "config.json");
     getConfig();
     getLogData();
 
-    if(fs.existsSync(loginDataFile)) {
-        fs.readFile(loginDataFile, (err, data) => {  
-            if(err) {
-                throw err;
-            }
-            try {
-                loginToSteam(JSON.parse(data));
-            } catch (e) {
-                loginToSteam(null);
-            }
-        });
-    } else {
-        loginToSteam(null);
-    }
+    loginToSteam({}); //Attempt login with stored username + key.
 }
 
 function loginToSteam(loginData) {
     if(loginData !== null) {
-        steamUserName = loginData.username;
-        if('key' in loginData) {
-            client.logOn({
-                "accountName": loginData.username,
-                "rememberPassword": true,
-                "loginKey": loginData.key
-            });
-        } else {
-            client.logOn({
-                "accountName": steamUserName,
-                "password": loginData.password,
-                "rememberPassword": true
-            });
+        if('username' in loginData) { 
+            steamUserName = loginData.username;
+            if('password' in loginData) {
+                //Fresh username and password given
+                client.logOn({
+                    "accountName": loginData.username,
+                    "password": loginData.password,
+                    "rememberPassword": true
+                });
+            } else if('key' in loginData) {
+                client.logOn({
+                    "accountName": loginData.username,
+                    "loginKey": loginData.key,
+                    "rememberPassword": true
+                });
+            }
+            return;
         }
-    } else {
-        loginPrompt();
+        //Get username from keytar
+        keytar.getPassword(scriptFileName, "username").then(
+            (result) => {
+                if(result) {
+                    steamUserName = result;
+                    keytar.getPassword(scriptFileName, "loginKey").then(
+                        (result) => {
+                            if(result) {
+                                loginToSteam({username:steamUserName,key:result});
+                            } else {
+                                //Password not found login prompt time.
+                                loginToSteam(null);
+                            }
+                        },
+                        (err) => {
+                            log.error(err);
+                        }
+                    );
+                } else {
+                    //Username not found login prompt time.
+                    loginToSteam(null);
+                }
+            },
+            (err) => {
+                log.error(err);
+            }
+        );
+        return;
     }
+    loginPrompt();
 }
 
 client.on('steamGuard', function(domain, callback) {
@@ -138,14 +159,14 @@ client.on('steamGuard', function(domain, callback) {
 
 client.on('loggedOn', function(details) {
 	console.log("Logged into Steam as " + client.steamID.getSteam3RenderedID());
+    client.setPersona("Online");
 });
 
 client.on('loginKey', function(key) {
-	console.log("loginKey: " + key);
-    var loginData = {};
-    loginData.username = steamUserName;
-    loginData.key = key;
-    fs.writeFileSync(loginDataFile, JSON.stringify(loginData));
+    // Save the key.
+    keytar.setPassword(scriptFileName, "username", steamUserName);
+    keytar.setPassword(scriptFileName, "loginKey", key);
+    console.log("Login key stored.");
 });
 
 client.on('error', function(err) {
@@ -171,6 +192,16 @@ client.chat.on('friendMessageEcho', function(message) {
 });
 
 function userChat(friendSteam, sender, message) {
+    //Check if it's a command bbcode, usually these don't get printed in plain text.
+    if(message.message_bbcode_parsed && message.message_bbcode_parsed.length === 1 && typeof message.message_bbcode_parsed[0] === "object" && "content" in message.message_bbcode_parsed[0] && message.message_bbcode_parsed[0].content && message.message_bbcode_parsed[0].content.length === 0) {
+        //Convert single bbcode into readable text.
+        message.message_no_bbcode = changeBBCodeToMessage(message.message_bbcode_parsed[0]);
+        if(message.message_no_bbcode === null) {
+            //Something went wrong, set it back.
+            message.message_no_bbcode = message.message;
+        }
+    }
+    
     var formattedMessage = formatMessage(sender, message);
     var steam64 = friendSteam.getSteamID64();
     var friendName = getFriendName(steam64);
@@ -226,47 +257,87 @@ function getFriendName(steamid64) {
     }
     if(steamid64 in client.users) {
         return client.users[steamid64].player_name;
+        //return client.chats[steamid64].name;
     }
     return null;
 }
 
-function getFriendNickName(steamid64, returnFriendName) {
+function getFriendNickName(steamid64) {
     if(steamid64 in client.myNicknames) {
         return client.myNicknames[steamid64];
-    } else if(returnFriendName) {
-        return getFriendName(steamid64);
     }
-    return null;
+    return getFriendName(steamid64);
 }
 
 function formatMessage(user, message) {
     return formatDynamicString(config.messageFormat, moment(message.server_timestamp), message, user);
 }
 
+const bbTagsFormat = {
+    "random":"/random {min}-{max}: {result}",
+    "flip":"/flip: {upperCase({result})}",
+    "tradeoffer":"Trade Offer From: {aidToCommunity({sender})}"
+};
+//Maybe I'll expand on these types of variable scopes to include an external js into the app for others to add onto.
+const functionReg = /{(.+)\((.*)\)}/gi;
+const conversionFuncs = {
+    "aidToCommunity": function(accountId) {
+        return SteamID.fromIndividualAccountID(parseInt(accountId));
+    },
+    "upperCase": function(argument) {
+        return argument.toUpperCase();
+    }
+};
+
+function changeBBCodeToMessage(messbb) {
+    if(messbb.tag in bbTagsFormat) {
+        var formattedMessage = "" + bbTagsFormat[messbb.tag];
+        if('attrs' in messbb) {
+            Object.keys(messbb.attrs).forEach(function (key) {
+                let tempKey = "{" + key + "}";
+                if(formattedMessage.includes(tempKey)) {
+                    formattedMessage = formattedMessage.replace(tempKey, messbb.attrs[key]);
+                }
+            });
+            //If there are any replacements left 
+            if(formattedMessage.includes("{") && formattedMessage.includes("}")) {
+                formattedMessage = formattedMessage.replace(functionReg, function(str, funcName, funcArg, offset, s) {
+                    if(funcName in conversionFuncs) {
+                        return conversionFuncs[funcName](funcArg);
+                    }
+                    return str; //If the function name isn't matching to our object map then we ignore it.
+                });
+            }
+        }
+        return formattedMessage;
+    }
+    return null;
+}
+
 function formatDynamicString(formatString, timeMoment, message, user) {
     var steam64 = user.getSteamID64();
     var formattedMessage = "" + formatString;
     var friendName = getFriendName(steam64);
-    var friendNick = getFriendNickName(steam64, false);
+    var friendNick = getFriendNickName(steam64);
     var bothNameFormat = friendName;
-    if(friendNick !== null) {
-        bothNameFormat = ("" + config.bothNameFormat).replace("{Nickname}", friendNick).replace("{Name}", friendName);
+    if(friendNick !== friendName) {
+        bothNameFormat = ("" + config.bothNameFormat);
     }
     var formatArgs = {
-        '{Date}':timeMoment.format(config.dateFormat),
-        '{Time}':timeMoment.format(config.timeFormat),
-        '{MyName}':getFriendName(null),
-        '{MySteamID}':client.steamID.getSteam3RenderedID(),
-        '{MySteamID2}':client.steamID.getSteam2RenderedID(),
-        '{MySteamID64}':client.steamID.getSteamID64(),
-        '{SteamID}':user.getSteam3RenderedID(),
-        '{SteamID2}':user.getSteam2RenderedID(),
-        '{SteamID64}':steam64,
-        '{Nickname}':getFriendNickName(steam64, true),
-        '{Name}':getFriendName(steam64),
-        '{BothNames}':bothNameFormat,
-        '{Message}':message.message_no_bbcode,
-        '{MessageBB}':message.message
+        '{BothNames}': bothNameFormat, //First so the variables it contains can be replaced properly.
+        '{Date}': timeMoment.format(config.dateFormat),
+        '{Time}': timeMoment.format(config.timeFormat),
+        '{MyName}': getFriendName(null),
+        '{MySteamID}': client.steamID.getSteam3RenderedID(),
+        '{MySteamID2}': client.steamID.getSteam2RenderedID(),
+        '{MySteamID64}': client.steamID.getSteamID64(),
+        '{SteamID}': user.getSteam3RenderedID(),
+        '{SteamID2}': user.getSteam2RenderedID(),
+        '{SteamID64}': steam64,
+        '{Nickname}': friendNick,
+        '{Name}': friendName,
+        '{Message}': message.message_no_bbcode,
+        '{MessageBB}': message.message
     };
     Object.keys(formatArgs).forEach(function (key) {
         if(formattedMessage.includes(key)) {

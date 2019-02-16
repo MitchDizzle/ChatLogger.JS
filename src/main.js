@@ -41,6 +41,7 @@ if(!gotTheLock) {
         chatLogger.run();
     });
     
+    
     const prompt = require('electron-prompt');
     chatLogger.setAppPath(app.getAppPath());
     chatLogger.setLoginPrompt(function () {
@@ -121,7 +122,7 @@ const createTray = () => {
 const createWindow = () => {
     window = new BrowserWindow({
         width: 465,
-        //height: 560,
+        height: 600,
         show: false,
         frame: true,
         alwaysOnTop: false,
@@ -148,6 +149,9 @@ const createWindow = () => {
     window.on('closed', () => {
         window = null;
     });
+    window.on('ready-to-show', () => {
+        updateWindowConfig();
+    });
 };
 
 const toggleWindow = () => {
@@ -159,19 +163,22 @@ const toggleWindow = () => {
 };
 
 const startWithWindows = () => {
-    const exeName = path.basename(process.execPath);
     app.setLoginItemSettings({
         openAtLogin: true,
-        path: exeName
+        path: process.execPath
     });
 };
 
 const showWindow = () => {
     //Update fields
-    window.webContents.send('updateConfigValues', chatLogger.getConfig());
+    updateWindowConfig();
     window.center();
     window.show();
     window.focus();
+};
+
+const updateWindowConfig = () => {
+    window.webContents.send('updateConfigValues', chatLogger.getConfig());
 };
 
 ipcMain.on('logOut', (event) => {
@@ -186,7 +193,7 @@ ipcMain.on('browseDirectory', (event) => {
     dialog.showOpenDialog(window, {
         properties: ['openDirectory']
     }, (filePaths, bookmarks) => {
-        if(filePaths.length > 0) {
+        if(filePaths && filePaths.length > 0) {
             window.webContents.send('updateDirectoryValue', filePaths[0]);
         }
     });
