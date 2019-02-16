@@ -10,7 +10,7 @@
       <tr>
         <td><label for="logDirectory">Log Directory:</label></td>
         <td>
-        <button id="btnOpen" onclick="browseClick()" style="float:right;">Browse</button>
+        <button id="btnBrowse" style="float:right;">Browse</button>
         <div style="overflow: hidden; padding-right: .5em;">
             <input type="text" id="logDirectory" style="width: 100%;"/>
         </div>
@@ -27,6 +27,12 @@
         <td><input type="text" id="invalidCharReplacement"/></td>
       </tr>
       <tr><td colspan=2><hr/></td></tr>
+      <tr>
+        <td><label for="bothNameFormatFormat">Both Name Format:</label></td>
+        <td><input type="text" id="bothNameFormat"/>
+        <div class="preview" id="bothNameFormatPreview"></div>
+        </td>
+      </tr>
       <tr>
         <td><label for="messageFormat">Message Format:</label></td>
         <td><input type="text" id="messageFormat"/>

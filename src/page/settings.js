@@ -11,6 +11,7 @@ document.addEventListener("keydown", function (e) {
     }
 });
 
+document.getElementById("btnBrowse").addEventListener('click', (event) => { browseClick(); });
 document.getElementById("btnSave").addEventListener('click', (event) => { saveConfig(); });
 document.getElementById("btnLogout").addEventListener('click', (event) => { logOut(); });
 
@@ -21,13 +22,15 @@ for(var i = 0; i < elements.length; i++) {
     input.addEventListener('propertychange', updatePreviewEvent);
 }
 
-ipcRenderer.on('updateConfigValues', function (event,logConfig) {
+ipcRenderer.on('updateConfigValues', function (event, logConfig) {
     config = logConfig;
     previewUpdateList = [];
     Object.keys(logConfig).forEach(function (key) {
-        var elem = document.getElementById(key)
-        elem.value = logConfig[key];
-        updatePreview(elem);
+        var elem = document.getElementById(key);
+        if(elem !== null) {
+            elem.value = logConfig[key];
+            updatePreview(elem);
+        }
     });
 });
 ipcRenderer.on('updateDirectoryValue', function (event, directory) {
@@ -45,7 +48,10 @@ function logOut() {
 function saveConfig() {
     var newConfig = {};
     Object.keys(config).forEach(function (key) {
-        newConfig[key] = document.getElementById(key).value
+        let element = document.getElementById(key)
+        if(element !== null) {
+            newConfig[key] = element.value
+        }
     });
     ipcRenderer.send('update-config', newConfig);
 }
@@ -76,19 +82,27 @@ function updatePreview(element) {
 }*/
 
 function formatPreview(formatString) {
+    // Need to some how get this formatter to either use the chatlogger.js formatDynamicString() without needing to be logged into the session.
     var formattedMessage = "" + formatString;
     var timeMoment = moment();
+    var friendNick = "Mitch";
+    var friendName = "Mitchell";
+    var bothNames = ("" + config.bothNameFormat).replace("{Nickname}", friendNick).replace("{Name}", friendName);
     var formatArgs = {
         '{Date}':timeMoment.format(config.dateFormat),
         '{Time}':timeMoment.format(config.timeFormat),
         '{MyName}':"Me",
         '{MySteamID}':"[U:1:XXXX]",
-        '{MySteamID64}':"AAAAAAA",
+        '{MySteamID2}':"STEAM_1:0:AAAA",
+        '{MySteamID64}':"URCOMMUNITYID",
         '{SteamID}':"[U:1:YYYY]",
-        '{SteamID64}':"BBBBBBB",
+        '{SteamID2}':"STEAM_1:0:BBBB",
+        '{SteamID64}':"COMMUNITYID",
         '{Nickname}':"Mitch",
         '{Name}':"Mitchell",
-        '{Message}':"Hey!"
+        '{BothNames}':bothNames,
+        '{Message}':"Hey!",
+        '{MessageBB}':"[emoticon]steamhappy[/emoticon]"
     };
     Object.keys(formatArgs).forEach(function (key) {
         if(formattedMessage.includes(key)) {

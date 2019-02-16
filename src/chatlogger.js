@@ -8,7 +8,7 @@ var endOfLine = require('os').EOL;
 
 var client = new SteamUser();
 var steamUserName;
-var appPath = "";
+var appPath = ".";
 //Default login prompts for running through console.
 var loginPrompt = function () {
     const rl = readline.createInterface({
@@ -72,9 +72,10 @@ module.exports = {
 var config = {
   "logDirectory":"./logs",
   "fileFormat":"{SteamID} - {Nickname}.txt",
-  "messageFormat":"[{Time}] {Name}: {Message}",
+  "messageFormat":"[{Time}] {BothNames}: {Message}",
   "invalidCharReplacement":"_",
   "seperationString":"───────────────────{Date}───────────────────",
+  "bothNameFormat":"{Name} ({Nickname})",
   "dateFormat":"L",
   "timeFormat":"LT"
 };
@@ -82,12 +83,15 @@ var config = {
 var logData = {};
 var logDataFile = "logData.json";
 var loginDataFile = 'logindata.json';
+var configFile = 'config.json';
 function runApp() {
-    createDirIfNotExists(path.join(appPath, "logdata"));
-    getConfig();
+    var logdataDir = path.join(appPath, "logdata");
+    createDirIfNotExists(logdataDir);
     logData = {};
-    logDataFile = path.join(appPath, "logdata", "logData.json");
-    loginDataFile = path.join(appPath, "logdata", "logindata.json");
+    logDataFile = path.join(logdataDir, "logData.json");
+    loginDataFile = path.join(logdataDir, "logindata.json");
+    configFile = path.join(logdataDir, "config.json");
+    getConfig();
     getLogData();
 
     if(fs.existsSync(loginDataFile)) {
@@ -144,9 +148,14 @@ client.on('loginKey', function(key) {
     fs.writeFileSync(loginDataFile, JSON.stringify(loginData));
 });
 
-client.on('error', function(e) {
+client.on('error', function(err) {
 	// Some error occurred during logon
-	console.log(e);
+    if(err.eresult === 5) {
+        console.log("Invalid Password or loginKey, reprompting login.");
+        loginToSteam(null);
+    } else {
+        console.log(e);
+    }
 });
 
 client.on('licenses', function(licenses) {
@@ -166,6 +175,7 @@ function userChat(friendSteam, sender, message) {
     var steam64 = friendSteam.getSteamID64();
     var friendName = getFriendName(steam64);
     var fileName = getChatIdFile(friendSteam).replace(/[/\\?%*:|"<>]/g, config.invalidCharReplacement);
+    var newFilePath = path.join(config.logDirectory, fileName);
     //Update Logdata also.
     var isSame = false;
     if(steam64 in logData) {
@@ -174,9 +184,15 @@ function userChat(friendSteam, sender, message) {
         }
         if('logFile' in logData[steam64]) {
             if(logData[steam64].logFile !== fileName) {
-                if(fs.existsSync(logData[steam64].logFile)) {
+                var oldLogFile = path.join(config.logDirectory, logData[steam64].logFile);
+                if(fs.existsSync(oldLogFile)) {
                     //Rename old file before appending text message, only if something in the filename changed.
-                    fs.renameSync(path.join(config.logDirectory, logData[steam64].logFile), path.join(config.logDirectory, fileName));
+                    if(fs.existsSync(newFilePath)) {
+                        // If the new file name is already taken then append .old to avoid conflicts.
+                        fs.renameSync(oldLogFile, newFilePath + ".old");
+                    } else {
+                        fs.renameSync(oldLogFile, newFilePath);
+                    }
                 }
             }
         }
@@ -214,11 +230,13 @@ function getFriendName(steamid64) {
     return null;
 }
 
-function getFriendNickName(steamid64) {
+function getFriendNickName(steamid64, returnFriendName) {
     if(steamid64 in client.myNicknames) {
         return client.myNicknames[steamid64];
+    } else if(returnFriendName) {
+        return getFriendName(steamid64);
     }
-    return getFriendName(steamid64);
+    return null;
 }
 
 function formatMessage(user, message) {
@@ -228,17 +246,27 @@ function formatMessage(user, message) {
 function formatDynamicString(formatString, timeMoment, message, user) {
     var steam64 = user.getSteamID64();
     var formattedMessage = "" + formatString;
+    var friendName = getFriendName(steam64);
+    var friendNick = getFriendNickName(steam64, false);
+    var bothNameFormat = friendName;
+    if(friendNick !== null) {
+        bothNameFormat = ("" + config.bothNameFormat).replace("{Nickname}", friendNick).replace("{Name}", friendName);
+    }
     var formatArgs = {
         '{Date}':timeMoment.format(config.dateFormat),
         '{Time}':timeMoment.format(config.timeFormat),
         '{MyName}':getFriendName(null),
         '{MySteamID}':client.steamID.getSteam3RenderedID(),
+        '{MySteamID2}':client.steamID.getSteam2RenderedID(),
         '{MySteamID64}':client.steamID.getSteamID64(),
         '{SteamID}':user.getSteam3RenderedID(),
+        '{SteamID2}':user.getSteam2RenderedID(),
         '{SteamID64}':steam64,
-        '{Nickname}':getFriendNickName(steam64),
+        '{Nickname}':getFriendNickName(steam64, true),
         '{Name}':getFriendName(steam64),
-        '{Message}':message
+        '{BothNames}':bothNameFormat,
+        '{Message}':message_no_bbcode,
+        '{MessageBB}':message
     };
     Object.keys(formatArgs).forEach(function (key) {
         if(formattedMessage.includes(key)) {
@@ -268,14 +296,25 @@ function getLogData() {
 }
 
 function getConfig() {
-    var configFile = path.join(appPath, "logdata", "config.json");
     if(fs.existsSync(configFile)) {
         fs.readFile(configFile, (err, data) => {
             if(err) {
                 throw err;
             }
             try {
-                config = JSON.parse(data);
+                var loadedConfig = JSON.parse(data);
+                var changedConfig = false;
+                Object.keys(config).forEach(function (key) {
+                    if(!(key in loadedConfig)) {
+                        //Add anything new in the default config to the saved config.
+                        loadedConfig[key] = config[key];
+                        changedConfig = true;
+                    }
+                });
+                config = loadedConfig;
+                if(changedConfig) {
+                    saveConfig();
+                }
                 createDirIfNotExists(config.logDirectory);
             } catch (e) {
                 //Do nothing I guess?
@@ -284,12 +323,11 @@ function getConfig() {
     } else {
         config.logDirectory = path.join(appPath, "logdata", "logs");
         createDirIfNotExists(config.logDirectory);
-        fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+        saveConfig();
     }
 }
 
 function saveConfig() {
-    var configFile = path.join(appPath, "logdata", "config.json");
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
 }
 

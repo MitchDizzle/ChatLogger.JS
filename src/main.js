@@ -103,11 +103,11 @@ const logOut = () => {
 }
 
 const createTray = () => {
-    tray = new Tray(path.join(__dirname, 'icons', '64x64.png'));
+    tray = new Tray(path.join(__dirname, 'icons', 'app.ico'));
     const contextMenu = Menu.buildFromTemplate([
         { label: 'Settings', click() { toggleWindow(); } },
         { label: 'Start with Windows', click() { startWithWindows(); } },
-        /*{ label: 'Devtools', click() { window.webContents.openDevTools({mode: 'detach'}); } },*/
+        { label: 'Devtools', click() { window.webContents.openDevTools({mode: 'detach'}); } },
         { type:'separator' },
         { label: 'Log Folder', click() { shell.openItem(chatLogger.getLogFolder()); } },
         { type:'separator' },
@@ -121,10 +121,10 @@ const createTray = () => {
 const createWindow = () => {
     window = new BrowserWindow({
         width: 450,
-        height: 540,
+        //height: 560,
         show: false,
         frame: true,
-        alwaysOnTop: true,
+        alwaysOnTop: false,
         center: true,
         fullscreenable: false,
         resizable: false,
@@ -134,7 +134,7 @@ const createWindow = () => {
             nodeIntegration: false,
             contextIsolation: false
         },
-        icon: path.join(__dirname, 'icons', 'icon.png')
+        icon: path.join(__dirname, 'icons', 'app.ico')
     });
     window.setMenu(null); //window.removeMenu();
     window.loadFile(path.join(__dirname, 'page', 'settings.html'));
