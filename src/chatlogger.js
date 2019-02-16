@@ -240,7 +240,7 @@ function getFriendNickName(steamid64, returnFriendName) {
 }
 
 function formatMessage(user, message) {
-    return formatDynamicString(config.messageFormat, moment(message.server_timestamp), message.message, user);
+    return formatDynamicString(config.messageFormat, moment(message.server_timestamp), message, user);
 }
 
 function formatDynamicString(formatString, timeMoment, message, user) {
@@ -265,8 +265,8 @@ function formatDynamicString(formatString, timeMoment, message, user) {
         '{Nickname}':getFriendNickName(steam64, true),
         '{Name}':getFriendName(steam64),
         '{BothNames}':bothNameFormat,
-        '{Message}':message_no_bbcode,
-        '{MessageBB}':message
+        '{Message}':message.message_no_bbcode,
+        '{MessageBB}':message.message
     };
     Object.keys(formatArgs).forEach(function (key) {
         if(formattedMessage.includes(key)) {
@@ -277,7 +277,7 @@ function formatDynamicString(formatString, timeMoment, message, user) {
 }
 
 function getChatIdFile(user) {
-    return formatDynamicString(config.fileFormat, moment(), '<Message Unknown>', user);
+    return formatDynamicString(config.fileFormat, moment(), {message:'<Message Unknown>',message_no_bbcode:''}, user);
 }
 
 function getLogData() {

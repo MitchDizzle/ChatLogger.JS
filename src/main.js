@@ -120,7 +120,7 @@ const createTray = () => {
 
 const createWindow = () => {
     window = new BrowserWindow({
-        width: 450,
+        width: 465,
         //height: 560,
         show: false,
         frame: true,
