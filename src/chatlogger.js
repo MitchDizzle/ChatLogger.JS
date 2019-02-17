@@ -190,7 +190,7 @@ client.on('steamGuard', function(domain, callback) {
 
 client.on('loggedOn', function(details) {
 	console.log("Logged into Steam as " + client.steamID.getSteam3RenderedID());
-    client.setPersona("Online");
+    client.setPersona(SteamUser.EPersonaState.Invisible);
 });
 
 client.on('loginKey', function(key) {
