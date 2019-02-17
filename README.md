@@ -28,15 +28,20 @@ Once that is installed go ahead and download the source or checkout the source v
 Open command prompt within the project's directory and execute these commands:
 ```shell
 npm install
-npm run make
+npm run package
 ```
-If you'd rather just compile the application without making an installer use `npm run package`.
+If you want to compile and create the installer use `npm run make`.
+
+**node-keytar is an optional dependency that requires python2.7 installed**, compiling with `npm install --no-optional` will compile the script just fine however it will save your username/loginkey in a plaintext file (this can be disabled in the config).  
+To compile fully without having to worry about where to find/install python2.7 use this command in a prompt run as an admin:  
+`npm install --global --production windows-build-tools`  
 
 
 # Server Script
 This app allows you to run the node.js directly on a linux server. (For Windows just follow the install guide.)
 
-First step would be installing node.js on your linux server. There should be plenty of tutorials out there. [(Installing Node.js via package manager)](https://nodejs.org/en/download/package-manager/)
+First step would be installing node.js on your linux server. There should be plenty of tutorials out there.  
+[(Installing Node.js via package manager)](https://nodejs.org/en/download/package-manager/)
 
 Second step would be downloading and uploading this script (download the source).
 

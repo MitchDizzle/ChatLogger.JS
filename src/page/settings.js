@@ -24,12 +24,19 @@ if(tabs.length > 0) {
     }
 }
 
+
 var elements = document.getElementsByClassName("preview");
 for(var i = 0; i < elements.length; i++) {
     var input = document.getElementById(elements[i].id.replace('PreviewTime', '').replace('Preview', ''));
     input.addEventListener('input', updatePreviewEvent);
     input.addEventListener('propertychange', updatePreviewEvent);
 }
+var inputs = document.getElementsByTagName('input');
+for(var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener('input', shouldSaveEvent);
+    inputs[i].addEventListener('propertychange', shouldSaveEvent);
+}
+
 
 if(ipcRenderer) {
     ipcRenderer.on('updateConfigValues', function (event, logConfig) {
@@ -39,14 +46,19 @@ if(ipcRenderer) {
         Object.keys(logConfig).forEach(function (key) {
             var elem = document.getElementById(key);
             if(elem !== null) {
-                elem.value = logConfig[key];
-                updatePreview(elem);
+                if('type' in elem && elem.type === 'checkbox') {
+                    elem.checked = logConfig[key];
+                } else {
+                    elem.value = logConfig[key];
+                    updatePreview(elem);
+                }
             }
         });
         selectSettingsTab();
     });
     ipcRenderer.on('updateDirectoryValue', function (event, directory) {
         document.getElementById('logDirectory').value = directory;
+        shouldSaveEvent(null);
     });
 }
 
@@ -62,7 +74,7 @@ function setChangesHaveBeenMade(hasChanges) {
     var changesText = document.getElementById('changesText');
     if(changesText) {
         if(hasChanges) {
-            changesText.innerHTML = "unsaved changes";
+            //changesText.innerHTML = "unsaved changes";
         } else {
             changesText.innerHTML = "";
         }
@@ -73,14 +85,24 @@ function setChangesHaveBeenMade(hasChanges) {
 function saveConfig() {
     var changesText = document.getElementById('changesText');
     if(changesText) {
+        changesText.className = "changestext";
         changesText.innerHTML = "Saved!";
+        setTimeout(function(){
+            document.getElementById('changesText').className = "changestext fade";
+        }, 500);
     }
     if(changesHaveBeenMade) {
         var newConfig = {};
         Object.keys(config).forEach(function (key) {
-            let element = document.getElementById(key)
-            if(element !== null) {
-                newConfig[key] = element.value
+            let elem = document.getElementById(key)
+            if(elem !== null) {
+                if('type' in elem && elem.type === 'checkbox') {
+                    console.log(key + ": " + elem.checked);
+                    newConfig[key] = elem.checked;
+                } else {
+                    console.log(key + ": " + elem.value);
+                    newConfig[key] = elem.value;
+                }
             }
         });
         ipcRenderer.send('update-config', newConfig);
@@ -88,9 +110,13 @@ function saveConfig() {
 }
 
 function updatePreviewEvent(event) {
-    setChangesHaveBeenMade(true);
     updatePreview(event.target);
 }
+
+function shouldSaveEvent(event) {
+    setChangesHaveBeenMade(true);
+}
+
 function updatePreview(element) {
     if(element.parentElement === null) {
         return;

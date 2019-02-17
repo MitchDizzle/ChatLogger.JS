@@ -5,8 +5,14 @@ const SteamUser = require('steam-user');
 const readline = require('readline');
 const path = require('path');
 const SteamID = require('steamid');
-const keytar = require('keytar');
 var endOfLine = require('os').EOL;
+
+var keytar = null;
+try {
+    keytar = require('keytar');
+} catch (e) {
+    //Not using keytar.
+}
 
 var client = new SteamUser({
     "machineIdType":"PersistentRandom"
@@ -81,15 +87,17 @@ var config = {
   "seperationString":"───────────────────{Date}───────────────────",
   "bothNameFormat":"{Name} ({Nickname})",
   "dateFormat":"L",
-  "timeFormat":"LT"
+  "timeFormat":"LT",
+  "saveLoginData":true
 };
 
 var logData = {};
 var logDataFile = "logData.json";
 var configFile = 'config.json';
 var scriptFileName = path.basename(__filename);
+var logdataDir = './logdata';
 function runApp() {
-    var logdataDir = path.join(appPath, "logdata");
+    logdataDir = path.join(appPath, "logdata");
     createDirIfNotExists(logdataDir);
     logData = {};
     logDataFile = path.join(logdataDir, "logData.json");
@@ -111,43 +119,66 @@ function loginToSteam(loginData) {
                     "password": loginData.password,
                     "rememberPassword": true
                 });
+                return;
             } else if('key' in loginData) {
                 client.logOn({
                     "accountName": loginData.username,
                     "loginKey": loginData.key,
                     "rememberPassword": true
                 });
+                return;
             }
-            return;
-        }
-        //Get username from keytar
-        keytar.getPassword(scriptFileName, "username").then(
-            (result) => {
-                if(result) {
-                    steamUserName = result;
-                    keytar.getPassword(scriptFileName, "loginKey").then(
-                        (result) => {
-                            if(result) {
-                                loginToSteam({username:steamUserName,key:result});
-                            } else {
-                                //Password not found login prompt time.
-                                loginToSteam(null);
-                            }
-                        },
-                        (err) => {
-                            log.error(err);
+        } else if(config.saveLoginData) {
+            if(keytar) {
+                //Get username from keytar
+                keytar.getPassword(scriptFileName, "username").then(
+                    (result) => {
+                        if(result) {
+                            steamUserName = result;
+                            keytar.getPassword(scriptFileName, "loginKey").then(
+                                (result) => {
+                                    if(result) {
+                                        loginToSteam({username:steamUserName,key:result});
+                                    } else {
+                                        //Password not found login prompt time.
+                                        loginToSteam(null);
+                                    }
+                                },
+                                (err) => {
+                                    log.error(err);
+                                    loginToSteam(null);
+                                }
+                            );
+                        } else {
+                            //Username not found login prompt time.
+                            loginToSteam(null);
                         }
-                    );
-                } else {
-                    //Username not found login prompt time.
-                    loginToSteam(null);
+                    },
+                    (err) => {
+                        log.error(err);
+                        loginToSteam(null);
+                    }
+                );
+                return;
+            } else {
+                //keytar isn't provided, let's find from file.
+                var loginDataFile = path.join(logdataDir, "loginData.json");
+                if(fs.existsSync(loginDataFile)) {
+                    fs.readFile(loginDataFile, (err, data) => {
+                        if(err) {
+                            throw err;
+                        }
+                        try {
+                            loginToSteam(JSON.parse(data));
+                        } catch (e) {
+                            //Something went wrong, let's just have them login through prompt.
+                            loginToSteam(null);
+                        }
+                    });
+                    return;
                 }
-            },
-            (err) => {
-                log.error(err);
             }
-        );
-        return;
+        }
     }
     loginPrompt();
 }
@@ -164,9 +195,16 @@ client.on('loggedOn', function(details) {
 
 client.on('loginKey', function(key) {
     // Save the key.
-    keytar.setPassword(scriptFileName, "username", steamUserName);
-    keytar.setPassword(scriptFileName, "loginKey", key);
-    console.log("Login key stored.");
+    if(config.saveLoginData) {
+        if(keytar) {
+            keytar.setPassword(scriptFileName, "username", steamUserName);
+            keytar.setPassword(scriptFileName, "loginKey", key);
+            console.log("Login key stored.");
+        } else {
+            fs.writeFileSync(path.join(logdataDir, "loginData.json"), JSON.stringify({key:key,username:steamUserName}, null, 2));
+            console.log("Login key saved.");
+        }
+    }
 });
 
 client.on('error', function(err) {
@@ -184,14 +222,30 @@ client.on('licenses', function(licenses) {
 });
 
 client.chat.on('friendMessage', function(message) {
-    console.log(userChat(message.steamid_friend, message.steamid_friend, message));
+    userChat(message.steamid_friend, message.steamid_friend, message);
 });
 
 client.chat.on('friendMessageEcho', function(message) {
-    console.log(userChat(message.steamid_friend, client.steamID, message));
+    userChat(message.steamid_friend, client.steamID, message);
 });
 
+var nonFriendNames = {};
 function userChat(friendSteam, sender, message) {
+    //Check if the player is on your friends list:
+    var friendName = getFriendName(friendSteam.getSteamID64());
+    if(friendName === null) {
+        client.getPersonas([friendSteam], function(err, personas) {
+            Object.keys(personas).forEach(function (sId) {
+                var persona = personas[sId];
+                nonFriendNames[sId] = persona ? persona.player_name : sId;
+            });
+            userChatEx(friendSteam, sender, message);
+        });
+        return;
+    }
+    userChatEx(friendSteam, sender, message);
+}
+function userChatEx(friendSteam, sender, message) {
     //Check if it's a command bbcode, usually these don't get printed in plain text.
     if(message.message_bbcode_parsed && message.message_bbcode_parsed.length === 1 && typeof message.message_bbcode_parsed[0] === "object" && "content" in message.message_bbcode_parsed[0] && message.message_bbcode_parsed[0].content && message.message_bbcode_parsed[0].content.length === 0) {
         //Convert single bbcode into readable text.
@@ -201,9 +255,8 @@ function userChat(friendSteam, sender, message) {
             message.message_no_bbcode = message.message;
         }
     }
-    
-    var formattedMessage = formatMessage(sender, message);
     var steam64 = friendSteam.getSteamID64();
+    var formattedMessage = formatMessage(sender, message);
     var friendName = getFriendName(steam64);
     var fileName = getChatIdFile(friendSteam).replace(/[/\\?%*:|"<>]/g, config.invalidCharReplacement);
     var newFilePath = path.join(config.logDirectory, fileName);
@@ -248,6 +301,7 @@ function userChat(friendSteam, sender, message) {
     });
     
     //return "- " + getFriendName(sender) + ": " + message.message;
+    console.log(formattedMessage);
     return formattedMessage;
 }
 
@@ -257,7 +311,10 @@ function getFriendName(steamid64) {
     }
     if(steamid64 in client.users) {
         return client.users[steamid64].player_name;
-        //return client.chats[steamid64].name;
+    }
+    if(steamid64 in nonFriendNames) {
+        //User isn't a friend but we've cached his name.
+        return nonFriendNames[steamid64];
     }
     return null;
 }
