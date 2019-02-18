@@ -117,14 +117,16 @@ function loginToSteam(loginData) {
                 client.logOn({
                     "accountName": loginData.username,
                     "password": loginData.password,
-                    "rememberPassword": true
+                    "rememberPassword": true,
+                    "logonID": 350
                 });
                 return;
             } else if('key' in loginData) {
                 client.logOn({
                     "accountName": loginData.username,
                     "loginKey": loginData.key,
-                    "rememberPassword": true
+                    "rememberPassword": true,
+                    "logonID": 350
                 });
                 return;
             }
@@ -213,7 +215,7 @@ client.on('error', function(err) {
         console.log("Invalid Password or loginKey, reprompting login.");
         loginToSteam(null);
     } else {
-        console.log(e);
+        console.log(err);
     }
 });
 
@@ -256,7 +258,7 @@ function userChatEx(friendSteam, sender, message) {
         }
     }
     var steam64 = friendSteam.getSteamID64();
-    var formattedMessage = formatMessage(sender, message);
+    var formattedMessage = formatMessage(sender, message).replace(/(?:\n)/g, endOfLine);
     var friendName = getFriendName(steam64);
     var fileName = getChatIdFile(friendSteam).replace(/[/\\?%*:|"<>]/g, config.invalidCharReplacement);
     var newFilePath = path.join(config.logDirectory, fileName);
