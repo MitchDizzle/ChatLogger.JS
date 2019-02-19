@@ -216,6 +216,11 @@ client.on('error', function(err) {
         loginToSteam(null);
     } else {
         console.log(err);
+        fs.appendFile(path.join(logdataDir, "error.log"), (new Date()) + " : " + err.toString() + endOfLine, function (error) {
+            if(error) {
+                throw error;
+            }
+        });
     }
 });
 

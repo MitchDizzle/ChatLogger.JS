@@ -1,0 +1,38 @@
+<!DOCtype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" http-equiv="Content-Security-Policy" content="script-src 'self'">
+    <link href="settings.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <div class="contentSelector" id="logindetails">
+      <table border=0>
+        <tr>
+          <td style="width:100px"><label for="username">Username:</label></td>
+          <td style="width:100px"><input type="text" id="username"/></td>
+        </tr>
+        <tr>
+          <td><label for="password">Password:</label></td>
+          <td><input type="password" id="password"/></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" id="rememberPassword"/><label for="rememberPassword">Remember</label></td>
+          <td><button class="bluebutton save" id="btnLogin">Login</button></td>
+        </tr>
+      </table>
+    </div>
+    <div class="contentSelector" id="steamguarddetails">
+      <table border=0>
+        <tr>
+          <td style="width:100px"><label for="guardCode">SteamGuard:</label></td>
+          <td style="width:100px"><input type="text" id="guardCode" /></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><button class="bluebutton save" id="btnGCAccept">Accept</button></td>
+        </tr>
+      </table>
+    </div>
+  </body>
+  <script src="prompt.js"></script>
+</html>
