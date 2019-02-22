@@ -15,7 +15,8 @@ try {
 }
 
 var client = new SteamUser({
-    "machineIdType":"PersistentRandom"
+    "machineIdType":"PersistentRandom",
+    "protocol": SteamUser.EConnectionProtocol.WebSocket,
 });
 var steamUserName;
 var appPath = ".";
