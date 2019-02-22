@@ -121,7 +121,8 @@ html, body {
 }
 
 .lbcontainer {
-  position: absolute;
+  vertical-align: baseline;
+  position: relative;
   cursor: pointer;
   padding: 6px 10px;
   padding-left: 35px;

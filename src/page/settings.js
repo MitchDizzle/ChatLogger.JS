@@ -24,19 +24,18 @@ if(tabs.length > 0) {
     }
 }
 
-
 var elements = document.getElementsByClassName("preview");
 for(var i = 0; i < elements.length; i++) {
     var input = document.getElementById(elements[i].id.replace('PreviewTime', '').replace('Preview', ''));
     input.addEventListener('input', updatePreviewEvent);
     input.addEventListener('propertychange', updatePreviewEvent);
 }
+
 var inputs = document.getElementsByTagName('input');
 for(var i = 0; i < inputs.length; i++) {
     inputs[i].addEventListener('input', shouldSaveEvent);
     inputs[i].addEventListener('propertychange', shouldSaveEvent);
 }
-
 
 if(ipcRenderer) {
     ipcRenderer.on('updateConfigValues', function (event, logConfig) {
@@ -94,7 +93,7 @@ function saveConfig() {
     if(changesHaveBeenMade) {
         var newConfig = {};
         Object.keys(config).forEach(function (key) {
-            let elem = document.getElementById(key)
+            let elem = document.getElementById(key);
             if(elem !== null) {
                 if('type' in elem && elem.type === 'checkbox') {
                     console.log(key + ": " + elem.checked);
@@ -103,6 +102,9 @@ function saveConfig() {
                     console.log(key + ": " + elem.value);
                     newConfig[key] = elem.value;
                 }
+            } else {
+                //No element for this config.
+                newConfig[key] = config[key];
             }
         });
         ipcRenderer.send('update-config', newConfig);

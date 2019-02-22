@@ -19,6 +19,25 @@ var client = new SteamUser({
 });
 var steamUserName;
 var appPath = ".";
+//Default config.
+var config = {
+  "logDirectory":"./logs",
+  "fileFormat":"{SteamID64} - {Nickname}.txt",
+  "messageFormat":"[{Time}] {BothNames}: {Message}",
+  "invalidCharReplacement":"_",
+  "seperationString":"──────────{Date}──────────",
+  "bothNameFormat":"{Name} ({Nickname})",
+  "dateFormat":"L",
+  "timeFormat":"LT",
+  "saveLoginData":true
+};
+
+var logData = {};
+var logDataFile = "logData.json";
+var configFile = 'config.json';
+var scriptFileName = path.basename(__filename);
+var logdataDir = './logdata';
+
 //Default login prompts for running through console.
 var loginPrompt = function () {
     const rl = readline.createInterface({
@@ -28,7 +47,7 @@ var loginPrompt = function () {
     rl.question('Steam Username: ', (value) => {
         steamUserName = value;
         rl.question('Steam Password: ', (value) => {
-            loginToSteam({username:steamUserName,password:value});
+            loginToSteam({username:steamUserName,password:tempPass,rememberPassword:config.saveLoginData});
             rl.close();
         });
     });
@@ -78,24 +97,6 @@ module.exports = {
   }
 };
 
-//Default config.
-var config = {
-  "logDirectory":"./logs",
-  "fileFormat":"{SteamID} - {Nickname}.txt",
-  "messageFormat":"[{Time}] {BothNames}: {Message}",
-  "invalidCharReplacement":"_",
-  "seperationString":"───────────────────{Date}───────────────────",
-  "bothNameFormat":"{Name} ({Nickname})",
-  "dateFormat":"L",
-  "timeFormat":"LT",
-  "saveLoginData":true
-};
-
-var logData = {};
-var logDataFile = "logData.json";
-var configFile = 'config.json';
-var scriptFileName = path.basename(__filename);
-var logdataDir = './logdata';
 function runApp() {
     logdataDir = path.join(appPath, "logdata");
     createDirIfNotExists(logdataDir);
@@ -114,10 +115,18 @@ function loginToSteam(loginData) {
             steamUserName = loginData.username;
             if('password' in loginData) {
                 //Fresh username and password given
+                let rememberPassword = config.saveLoginData;
+                if('rememberPassword' in loginData) {
+                    rememberPassword = loginData.rememberPassword;
+                }
+                if(config.saveLoginData !== rememberPassword) {
+                    config.saveLoginData = rememberPassword;
+                    saveConfig();
+                }
                 client.logOn({
                     "accountName": loginData.username,
                     "password": loginData.password,
-                    "rememberPassword": true,
+                    "rememberPassword": rememberPassword,
                     "logonID": 350
                 });
                 return;
@@ -214,6 +223,20 @@ client.on('error', function(err) {
     if(err.eresult === 5) {
         console.log("Invalid Password or loginKey, reprompting login.");
         loginToSteam(null);
+        //Remove old instances of stored username/loginKey so we don't use bad creds next time.
+        if(keytar) {
+            keytar.deletePassword(scriptFileName, "username");
+            keytar.deletePassword(scriptFileName, "loginKey");
+        } else {
+            var loginDataFile = path.join(logdataDir, "loginData.json");
+            if(fs.existsSync(loginDataFile)) {
+                fs.unlink(loginDataFile, function(err){
+                    if(err) {
+                        return console.log(err);
+                    }
+                });
+            }
+        }
     } else {
         console.log(err);
         fs.appendFile(path.join(logdataDir, "error.log"), (new Date()) + " : " + err.toString() + endOfLine, function (error) {

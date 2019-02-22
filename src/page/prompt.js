@@ -1,52 +1,69 @@
 const moment = window.moment;
 const ipcRenderer = window.ipcRenderer;
+
 var promptId = null;
+
+const promptError = e => {
+	if (e instanceof Error) {
+		e = e.message;
+	}
+	ipcRenderer.sendSync('prompt-error:' + promptId, e);
+};
+
+const promptCancel = () => {
+	ipcRenderer.sendSync('prompt-post-data:' + promptId, null);
+};
+
+const promptSubmit = (event) => {
+    let tempForm = null;
+    if(event) {
+        event.preventDefault();
+        if(event.callingTarget && event.callingTarget.form) {
+            //Get the form which has the submit button
+            tempForm = event.callingTarget.form;
+        }
+    }
+    if(!tempForm) {
+        tempForm = document.getElementById('dataCollection');
+    }
+	let data = formToJSON(tempForm.elements);
+	ipcRenderer.sendSync('prompt-post-data:' + promptId, data);
+};
+
+const formToJSON = elements => [].reduce.call(elements, (data, element) => {
+    if(!isBlank(element.name) && !isBlank(element.value)) {
+        if(['checkbox', 'radio'].includes(element.type)) {
+            data[element.name] = element.checked;
+        } else {
+            data[element.name] = element.value;
+        }
+    }
+    return data;
+}, {});
+
+window.addEventListener('error', error => {
+	if(promptId) {
+		promptError(error);
+	}
+});
 
 ready(() => {
     promptId = document.location.hash.replace('#', '');
     
-    
-    
-    
-    //Hide the rest.
-    var contentElements = document.getElementsByClassName("contentSelector");
-    if(contentElements.length > 0) {
-        for(var i = 0; i < contentElements.length; i++) {
-            var element = contentElements[i];
-            if(element.id !== promptId) {
-                document.getElementById(element.id).style.display = "none";
-            }
-        }
-    }
+    const form = document.getElementById('dataCollection');
+    form.addEventListener('submit', promptSubmit);
+	//document.getElementById('ok').addEventListener('click', () => promptSubmit());
+
+		/*dataEl.addEventListener('keyup', e => {
+			e.which = e.which || e.keyCode;
+			if (e.which === 13) {
+				promptSubmit();
+			}
+			if (e.which === 27) {
+				promptCancel();
+			}
+		});*/
 });
-
-document.getElementById("btnLogin").addEventListener('click', (event) => { login(); });
-document.getElementById("btnGCAccept").addEventListener('click', (event) => { gcAccept() });
-
-function login() {
-    var username = document.getElementById("username").value;
-    var password = document.getElementById("password").value;
-    //Check if username and password is valid and not blank.
-    if(isBlank(username) || isBlank(password)) {
-        return;
-    }
-    if(ipcRenderer) {
-        ipcRenderer.send('loginDetails', {username:username,password:password});
-    }
-    window.close();
-}
-
-function gcAccept() {
-    var guardCode = document.getElementById("guardCode").value;
-    //Check if username and password is valid and not blank.
-    if(isBlank(guardCode)) {
-        return;
-    }
-    if(ipcRenderer) {
-        ipcRenderer.send('steamGuardCode', guardCode);
-    }
-    window.close();
-}
 
 function isBlank(str) {
     return (!str || /^\s*$/.test(str));

@@ -52,59 +52,41 @@ if(!gotTheLock) {
     });
     
     
-    const prompt = require('electron-prompt');
     chatLogger.setAppPath(app.getAppPath());
     chatLogger.setLoginPrompt(function () {
-        var loginData = {};
-        prompt({
-            title: 'Steam Login Username',
-            label: 'Username:',
-            value: '',
-            height: 150,
-            inputAttrs: {
-                type: 'text'
-            }
-        }).then((username) => {
-            if(username === null) {
-                forceQuit();
+        electronPrompt({
+            title: 'Steam Login',
+            label: 'logindetails',
+            height: 165,
+            width: 425
+        }).then((loginData) => {
+            if(loginData) {
+                chatLogger.login(loginData);
             } else {
-                loginData.username = username;
-                prompt({
-                    title: 'Steam Login Password',
-                    label: 'Password:',
-                    value: '',
-                    height: 150,
-                    inputAttrs: {
-                        type: 'password'
-                    }
-                }).then((password) => {
-                    if(password === null) {
-                        forceQuit();
-                    } else {
-                        loginData.password = password;
-                        chatLogger.login(loginData);
-                    }
-                }).catch(console.error);
+                forceQuit();
             }
-        }).catch(console.error);
+        }).catch(function(err) {
+            console.log(err);
+            forceQuit();
+        });
     });
 
     chatLogger.setSteamGuardPrompt(function (callback) {
-        prompt({
+        electronPrompt({
             title: 'Steam Guard Code',
-            label: 'Code:',
-            value: '',
-            height: 150,
-            inputAttrs: {
-                type: 'text'
-            }
-        }).then((gaurdcode) => {
-            if(gaurdcode === null) {
-                forceQuit();
+            label: 'steamguarddetails',
+            height: 115,
+            width: 240
+        }).then((data) => {
+            if(data && data.guardCode) {
+                callback(data.guardCode);
             } else {
-                callback(gaurdcode)
+                forceQuit();
             }
-        }).catch(console.error);
+        }).catch(function(err) {
+            console.log(err);
+            forceQuit();
+        });
     });
 }
 
@@ -220,33 +202,31 @@ function electronPrompt(options, parentWindow) {
 				height: 130,
 				resizable: false,
 				title: 'Prompt',
-				label: 'Please input a value:',
-				alwaysOnTop: false,
-				value: null,
-				type: 'input',
-				selectOptions: null,
-				icon: null,
-				useHtmlLabel: false,
-				customStylesheet: null
+				label: null,
+				alwaysOnTop: true,
 			},
 			options || {}
 		);
-
-		if (opts.type === 'select' && (opts.selectOptions === null || typeof opts.selectOptions !== 'object')) {
-			return reject(new Error('"selectOptions" must be an object'));
-		}
+        
+        if(opts.label === null) {
+            return reject(new Error('"label" must be defined'));
+        }
 
 		let promptWindow = new BrowserWindow({
 			width: opts.width,
 			height: opts.height,
 			resizable: opts.resizable,
 			parent: parentWindow,
-			skipTaskbar: true,
+			skipTaskbar: false,
 			alwaysOnTop: opts.alwaysOnTop,
 			useContentSize: true,
 			modal: Boolean(parentWindow),
 			title: opts.title,
-			icon: opts.icon
+            webPreferences: {
+                preload: path.join(__dirname, 'page', 'preload.js'),
+                nodeIntegration: false,
+                contextIsolation: false
+            }
 		});
 
 		promptWindow.setMenu(null);
@@ -291,6 +271,6 @@ function electronPrompt(options, parentWindow) {
 			resolve(null);
 		});
 
-		promptWindow.loadFile(path.join(__dirname, 'page', 'prompt.html'), {hash:id});
+		promptWindow.loadFile(path.join(__dirname, 'page', 'prompts', opts.label+'.html'), {hash:id});
 	});
 }

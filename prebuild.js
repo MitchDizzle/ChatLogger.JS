@@ -6,7 +6,7 @@ const showdown  = require('showdown');
 var converter = new showdown.Converter();
 converter.setOption('openLinksInNewWindow', 'true');
 var docFolder = "docs";
-var outputFolder = path.join("src", "page");
+var outputFolder = path.join("src", "page", "doctohtml");
 fs.readdir(docFolder, function(err, items) {
     for(var i=0; i<items.length; i++) {
         var file = path.join(docFolder, items[i]);
