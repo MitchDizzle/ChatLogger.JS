@@ -48,7 +48,7 @@ var loginPrompt = function () {
     rl.question('Steam Username: ', (value) => {
         steamUserName = value;
         rl.question('Steam Password: ', (value) => {
-            loginToSteam({username:steamUserName,password:tempPass,rememberPassword:config.saveLoginData});
+            loginToSteam({username:steamUserName,password:value,rememberPassword:config.saveLoginData});
             rl.close();
         });
     });
