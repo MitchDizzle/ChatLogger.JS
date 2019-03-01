@@ -122,6 +122,7 @@ const createWindow = () => {
         fullscreenable: false,
         resizable: false,
         transparent: false,
+        title: "ChatLogger.JS - v" + app.getVersion(),
         webPreferences: {
             preload: path.join(__dirname, 'page', 'preload.js'),
             nodeIntegration: false,
