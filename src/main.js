@@ -94,12 +94,12 @@ const logOut = () => {
     chatLogger.logout();
     window.hide();
 }
-
+const getOpenAtLogin = () => app.getLoginItemSettings().openAtLogin;
 const createTray = () => {
     tray = new Tray(path.join(__dirname, 'icons', 'app.ico'));
     const contextMenu = Menu.buildFromTemplate([
         { label: 'Settings', click() { toggleWindow(); } },
-        { label: 'Start with Windows', click() { startWithWindows(); } },
+        { label: 'Start with Windows', type: 'checkbox', checked: getOpenAtLogin(), click() { startWithWindows(); } },
         { label: 'Devtools', visible:(cmdArguments.dev===true), click() { window.webContents.openDevTools({mode:'detach'}); } },
         { type:'separator' },
         { label: 'Log Folder', click() { shell.openItem(chatLogger.getLogFolder()); } },
@@ -157,7 +157,7 @@ const toggleWindow = () => {
 
 const startWithWindows = () => {
     app.setLoginItemSettings({
-        openAtLogin: true,
+        openAtLogin: !getOpenAtLogin(),
         path: process.execPath
     });
 };

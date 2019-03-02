@@ -86,7 +86,7 @@ module.exports = {
   setSteamGuardPrompt: function (steamguardFunction) {
     sgPrompt = steamguardFunction;
   },
-  run: function (path) {
+  run: function () {
     runApp();
   },
   login: function (newLoginData) {
@@ -104,10 +104,10 @@ function runApp() {
     logData = {};
     logDataFile = path.join(logdataDir, "logData.json");
     configFile = path.join(logdataDir, "config.json");
-    getConfig();
+    getConfig(() => {
+        loginToSteam({});
+    });
     getLogData();
-
-    loginToSteam({}); //Attempt login with stored username + key.
 }
 
 function loginToSteam(loginData) {
@@ -155,6 +155,7 @@ function loginToSteam(loginData) {
                                         loginToSteam({username:steamUserName,key:result});
                                     } else {
                                         //Password not found login prompt time.
+                                        console.log("Login key not found, reprompting.");
                                         loginToSteam(null);
                                     }
                                 },
@@ -165,6 +166,7 @@ function loginToSteam(loginData) {
                             );
                         } else {
                             //Username not found login prompt time.
+                            console.log("Login key not found, reprompting.");
                             loginToSteam(null);
                         }
                     },
@@ -456,35 +458,33 @@ function getLogData() {
     }
 }
 
-function getConfig() {
+function getConfig(callback) {
     if(fs.existsSync(configFile)) {
         fs.readFile(configFile, (err, data) => {
             if(err) {
                 throw err;
             }
-            try {
-                var loadedConfig = JSON.parse(data);
-                var changedConfig = false;
-                Object.keys(config).forEach(function (key) {
-                    if(!(key in loadedConfig)) {
-                        //Add anything new in the default config to the saved config.
-                        loadedConfig[key] = config[key];
-                        changedConfig = true;
-                    }
-                });
-                config = loadedConfig;
-                if(changedConfig) {
-                    saveConfig();
+            let loadedConfig = JSON.parse(data);
+            let changedConfig = false;
+            Object.keys(config).forEach(function (key) {
+                if(!(key in loadedConfig)) {
+                    //Add anything new in the default config to the saved config.
+                    loadedConfig[key] = config[key];
+                    changedConfig = true;
                 }
-                createDirIfNotExists(config.logDirectory);
-            } catch (e) {
-                //Do nothing I guess?
+            });
+            config = loadedConfig;
+            if(changedConfig) {
+                saveConfig();
             }
+            createDirIfNotExists(config.logDirectory);
+            callback();
         });
     } else {
         config.logDirectory = path.join(appPath, "logdata", "logs");
         createDirIfNotExists(config.logDirectory);
         saveConfig();
+        callback();
     }
 }
 
