@@ -30,7 +30,7 @@ var config = {
   "bothNameFormat":"{Name} ({Nickname})",
   "dateFormat":"L",
   "timeFormat":"LT",
-  "saveLoginData":true
+  "saveLoginData":false
 };
 
 var logData = {};
@@ -119,6 +119,8 @@ function loginToSteam(loginData) {
                 let rememberPassword = config.saveLoginData;
                 if('rememberPassword' in loginData) {
                     rememberPassword = loginData.rememberPassword;
+                } else {
+                    rememberPassword = false;
                 }
                 if(config.saveLoginData !== rememberPassword) {
                     config.saveLoginData = rememberPassword;
