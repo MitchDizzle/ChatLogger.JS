@@ -1,0 +1,42 @@
+<!DOCtype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" http-equiv="Content-Security-Policy" content="script-src 'self'">
+    <link href="../settings.css" rel="stylesheet"/>
+  </head>
+  <body>
+    <div class="box">
+    <form id="dataCollection">
+      <table border=0>
+        <tr>
+          <td style="width:75px;"><label for="username">Username:</label></td>
+          <td style="width:150px;"><input type="text" name="username" style="width:100%; float:right;" autofocus></td>
+        </tr>
+        <tr>
+          <td><label for="password">Password:</label></td>
+          <td><input type="password" name="password" style="width:100%; float:right;"/></td>
+        </tr>
+        <tr>
+          <td>
+            <label class="lbcontainer">Remember Login
+                <input type="checkbox" id="rememberPassword" name="rememberPassword">
+                <span class="checkmark"></span>
+            </label>
+          </td>
+          <td><input type="submit" class="bluebutton save" id="btnAccept" value="Sign In"></input></td>
+        </tr>
+        <!--<tr>
+          <td><input type="checkbox" name="rememberPassword"><label for="rememberPassword">Remember</label></input>
+          <label class="lbcontainer">Remember Login
+            <input type="checkbox" id="rememberPassword">
+            <span class="checkmark"></span>
+          </label>
+          </td>
+          <td><input type="submit" class="bluebutton save" id="btnAccept" value="Login"></input></td>
+        </tr>-->
+      </table>
+    </form>
+    </div>
+  </body>
+  <script src="../prompt.js"></script>
+</html>

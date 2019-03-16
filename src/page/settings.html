@@ -2,15 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" http-equiv="Content-Security-Policy" content="script-src 'self'">
-    <title>ChatLogger.JS</title>
     <link href="settings.css" rel="stylesheet"/>
   </head>
   <body>
+    <div class="box">
+    <div class="tab">
+        <button class="tablinks" id="btnTabSettings" name="settings">Settings</button>
+        <button class="tablinks" id="btnTabInfo" name="guide">Format Guide</button>
+    </div>
+    <div id="settings" class="tabcontent">
     <table border=0>
       <tr>
         <td><label for="logDirectory">Log Directory:</label></td>
         <td>
-        <button id="btnOpen" onclick="browseClick()" style="float:right;">Browse</button>
+        <button class="bluebutton" id="btnBrowse" style="float:right;">Browse</button>
         <div style="overflow: hidden; padding-right: .5em;">
             <input type="text" id="logDirectory" style="width: 100%;"/>
         </div>
@@ -27,6 +32,12 @@
         <td><input type="text" id="invalidCharReplacement"/></td>
       </tr>
       <tr><td colspan=2><hr/></td></tr>
+      <tr>
+        <td><label for="bothNameFormatFormat">Both Name Format:</label></td>
+        <td><input type="text" id="bothNameFormat"/>
+        <div class="preview" id="bothNameFormatPreview"></div>
+        </td>
+      </tr>
       <tr>
         <td><label for="messageFormat">Message Format:</label></td>
         <td><input type="text" id="messageFormat"/>
@@ -51,12 +62,22 @@
         </td>
       </tr>
       <tr><td colspan=2><hr/></td></tr>
-      <tr>
-        <td>
-        <button id="btnLogout" style="float:left;">Logout</button></td>
-        <td><input type="submit" value="Save" id="btnSave" class="save"/></td>
-      </tr>
     </table>
+    </div>
+    <div id="guide" class="tabcontent"><div w3-include-html="doctohtml/formatinfo.html"></div></div>
+    <div class="footer">
+        <button class="bluebutton" id="btnLogout" style="float:left;">Logout</button>
+        <button class="bluebutton save" id="btnSaveClose">Save & Close</button>
+        <button class="bluebutton save" id="btnSave">Apply</button>
+        <div id="changesText" class="changestext"></div>
+        <div class="autosave">
+        <!--<label class="lbcontainer">Remember Login
+            <input type="checkbox" id="saveLoginData">
+            <span class="checkmark"></span>
+        </label>-->
+        </div>
+    </div>
+    </div>
   </body>
   <script src="settings.js"></script>
 </html>

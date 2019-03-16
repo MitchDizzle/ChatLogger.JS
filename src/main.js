@@ -22,6 +22,16 @@ const gotTheLock = app.requestSingleInstanceLock();
 
 const chatLogger = require('./chatlogger');
 
+const cmdArguments = () => {
+    var argObj = {};
+    process.argv.forEach(function (val, index, array) {
+        if(val === "-dev") {
+            argObj.dev = true;
+        }
+    });
+    return argObj;
+};
+
 if(!gotTheLock) {
     forceQuit();
 } else {
@@ -41,59 +51,42 @@ if(!gotTheLock) {
         chatLogger.run();
     });
     
-    const prompt = require('electron-prompt');
+    
     chatLogger.setAppPath(app.getAppPath());
     chatLogger.setLoginPrompt(function () {
-        var loginData = {};
-        prompt({
-            title: 'Steam Login Username',
-            label: 'Username:',
-            value: '',
-            height: 150,
-            inputAttrs: {
-                type: 'text'
-            }
-        }).then((username) => {
-            if(username === null) {
-                forceQuit();
+        electronPrompt({
+            title: 'Steam Login',
+            label: 'logindetails',
+            height: 165,
+            width: 425
+        }).then((loginData) => {
+            if(loginData) {
+                chatLogger.login(loginData);
             } else {
-                loginData.username = username;
-                prompt({
-                    title: 'Steam Login Password',
-                    label: 'Password:',
-                    value: '',
-                    height: 150,
-                    inputAttrs: {
-                        type: 'password'
-                    }
-                }).then((password) => {
-                    if(password === null) {
-                        forceQuit();
-                    } else {
-                        loginData.password = password;
-                        chatLogger.login(loginData);
-                    }
-                }).catch(console.error);
+                forceQuit();
             }
-        }).catch(console.error);
+        }).catch(function(err) {
+            console.log(err);
+            forceQuit();
+        });
     });
 
     chatLogger.setSteamGuardPrompt(function (callback) {
-        prompt({
+        electronPrompt({
             title: 'Steam Guard Code',
-            label: 'Code:',
-            value: '',
-            height: 150,
-            inputAttrs: {
-                type: 'text'
-            }
-        }).then((gaurdcode) => {
-            if(gaurdcode === null) {
-                forceQuit();
+            label: 'steamguarddetails',
+            height: 115,
+            width: 240
+        }).then((data) => {
+            if(data && data.guardCode) {
+                callback(data.guardCode);
             } else {
-                callback(gaurdcode)
+                forceQuit();
             }
-        }).catch(console.error);
+        }).catch(function(err) {
+            console.log(err);
+            forceQuit();
+        });
     });
 }
 
@@ -101,13 +94,13 @@ const logOut = () => {
     chatLogger.logout();
     window.hide();
 }
-
+const getOpenAtLogin = () => app.getLoginItemSettings().openAtLogin;
 const createTray = () => {
-    tray = new Tray(path.join(__dirname, 'icons', '64x64.png'));
+    tray = new Tray(path.join(__dirname, 'icons', 'app.ico'));
     const contextMenu = Menu.buildFromTemplate([
         { label: 'Settings', click() { toggleWindow(); } },
-        { label: 'Start with Windows', click() { startWithWindows(); } },
-        /*{ label: 'Devtools', click() { window.webContents.openDevTools({mode: 'detach'}); } },*/
+        { label: 'Autostart', type: 'checkbox', checked: getOpenAtLogin(), click() { startWithWindows(); } },
+        { label: 'Devtools', visible:(cmdArguments.dev===true), click() { window.webContents.openDevTools({mode:'detach'}); } },
         { type:'separator' },
         { label: 'Log Folder', click() { shell.openItem(chatLogger.getLogFolder()); } },
         { type:'separator' },
@@ -120,21 +113,22 @@ const createTray = () => {
 
 const createWindow = () => {
     window = new BrowserWindow({
-        width: 450,
-        height: 540,
+        width: 465,
+        height: 600,
         show: false,
         frame: true,
-        alwaysOnTop: true,
+        alwaysOnTop: false,
         center: true,
         fullscreenable: false,
         resizable: false,
         transparent: false,
+        title: "ChatLogger.JS - v" + app.getVersion(),
         webPreferences: {
             preload: path.join(__dirname, 'page', 'preload.js'),
             nodeIntegration: false,
             contextIsolation: false
         },
-        icon: path.join(__dirname, 'icons', 'icon.png')
+        icon: path.join(__dirname, 'icons', 'app.ico')
     });
     window.setMenu(null); //window.removeMenu();
     window.loadFile(path.join(__dirname, 'page', 'settings.html'));
@@ -148,6 +142,9 @@ const createWindow = () => {
     window.on('closed', () => {
         window = null;
     });
+    window.on('ready-to-show', () => {
+        updateWindowConfig();
+    });
 };
 
 const toggleWindow = () => {
@@ -159,19 +156,22 @@ const toggleWindow = () => {
 };
 
 const startWithWindows = () => {
-    const exeName = path.basename(process.execPath);
     app.setLoginItemSettings({
-        openAtLogin: true,
-        path: exeName
+        openAtLogin: !getOpenAtLogin(),
+        path: process.execPath
     });
 };
 
 const showWindow = () => {
     //Update fields
-    window.webContents.send('updateConfigValues', chatLogger.getConfig());
+    updateWindowConfig();
     window.center();
     window.show();
     window.focus();
+};
+
+const updateWindowConfig = () => {
+    window.webContents.send('updateConfigValues', chatLogger.getConfig());
 };
 
 ipcMain.on('logOut', (event) => {
@@ -186,8 +186,92 @@ ipcMain.on('browseDirectory', (event) => {
     dialog.showOpenDialog(window, {
         properties: ['openDirectory']
     }, (filePaths, bookmarks) => {
-        if(filePaths.length > 0) {
+        if(filePaths && filePaths.length > 0) {
             window.webContents.send('updateDirectoryValue', filePaths[0]);
         }
     });
 });
+
+
+function electronPrompt(options, parentWindow) {
+	return new Promise((resolve, reject) => {
+		const id = `${new Date().getTime()}-${Math.random()}`;
+
+		const opts = Object.assign(
+			{
+				width: 370,
+				height: 130,
+				resizable: false,
+				title: 'Prompt',
+				label: null,
+				alwaysOnTop: true,
+			},
+			options || {}
+		);
+        
+        if(opts.label === null) {
+            return reject(new Error('"label" must be defined'));
+        }
+
+		let promptWindow = new BrowserWindow({
+			width: opts.width,
+			height: opts.height,
+			resizable: opts.resizable,
+			parent: parentWindow,
+			skipTaskbar: false,
+			alwaysOnTop: opts.alwaysOnTop,
+			useContentSize: true,
+			modal: Boolean(parentWindow),
+			title: opts.title,
+            webPreferences: {
+                preload: path.join(__dirname, 'page', 'preload.js'),
+                nodeIntegration: false,
+                contextIsolation: false
+            }
+		});
+
+		promptWindow.setMenu(null);
+
+		const getOptionsListener = event => {
+			event.returnValue = JSON.stringify(opts);
+		};
+
+		const cleanup = () => {
+			if (promptWindow) {
+				promptWindow.close();
+				promptWindow = null;
+			}
+		};
+
+		const postDataListener = (event, value) => {
+			resolve(value);
+			event.returnValue = null;
+			cleanup();
+		};
+
+		const unresponsiveListener = () => {
+			reject(new Error('Window was unresponsive'));
+			cleanup();
+		};
+
+		const errorListener = (event, message) => {
+			reject(new Error(message));
+			event.returnValue = null;
+			cleanup();
+		};
+
+		ipcMain.on('prompt-get-options:' + id, getOptionsListener);
+		ipcMain.on('prompt-post-data:' + id, postDataListener);
+		ipcMain.on('prompt-error:' + id, errorListener);
+		promptWindow.on('unresponsive', unresponsiveListener);
+
+		promptWindow.on('closed', () => {
+			ipcMain.removeListener('prompt-get-options:' + id, getOptionsListener);
+			ipcMain.removeListener('prompt-post-data:' + id, postDataListener);
+			ipcMain.removeListener('prompt-error:' + id, postDataListener);
+			resolve(null);
+		});
+
+		promptWindow.loadFile(path.join(__dirname, 'page', 'prompts', opts.label+'.html'), {hash:id});
+	});
+}

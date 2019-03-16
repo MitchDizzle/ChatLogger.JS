@@ -1,43 +1,195 @@
-body {
+html, body {
     font-family: Arial, Helvetica, sans-serif;
+    margin:0;
+    padding:0;
+    height: 100%;
 }
-table { 
+
+.tab {
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+}
+
+/* Style the buttons that are used to open the tab content */
+.tab .tablinks {
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 10px 16px;
+  transition: 0.3s;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  background-color: #ccc;
+}
+
+/* Style the tab content */
+.box {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+}
+
+.box .tab {
+  flex: 0 1 auto;
+}
+
+.box .tabcontent {
+  display: none;
+  /*padding: 6px 12px;*/
+  flex: 1 1 auto;
+  height:100%;
+}
+.box #guide.tabcontent {
+  /*overflow:auto;*/
+  overflow-x:visible;
+  overflow-y:auto;
+  border: 1px solid #999;
+}
+
+.box .footer {
+  overflow:visible;
+  height: 100%;
+  flex: 0 1 40px;
+}
+
+.box table { 
     border-collapse: separate; 
     border-spacing: 5px; 
+    font-size: 90%;
+    width: 100%;
 }
-div.preview { 
-    font-size: 75%; 
+
+.box div.preview { 
+    font-size: 80%; 
 }
-input {
+
+.box input[type=text],
+.box input[type=password] {
+    width: 100%;
+    box-sizing: border-box;
     vertical-align: middle;
     margin: 5px 0px 5px 0;
     padding: 5px;
     background-color: #fff;
     border: 1px solid #999;
 }
-input[type=text],
-input[type=password] {
-    width: 100%;
-    box-sizing: border-box;
-}
-input.save {
-    padding: 5px 10px;
-    background-color: dodgerblue;
-    color: white;
-    cursor: pointer;
-    float: right;
-}
-input.save:hover {
-    background-color: royalblue;
-}
-button {
+
+.bluebutton {
     margin: 5px 0px 5px 0;
     padding: 5px 10px;
-    background-color: dodgerblue;
+    background-color: orangered;
     border: 1px solid #999;
     color: white;
     cursor: pointer;
 }
-button:hover {
-    background-color: royalblue;
+.bluebutton.save {
+    float: right;
+}
+.bluebutton:hover {
+    background-color: red;
+}
+.box .footer .bluebutton {
+    margin: 5px 5px 5px 5px;
+}
+
+.box .footer .changestext {
+    float: right;
+    /*margin: 5px 5px 5px 5px;*/
+    margin: 5px 0px 5px 0;
+    padding: 5px 10px;
+    font-size: 90%;
+    opacity:1;
+}
+.box .footer .changestext.fade {
+    transition:opacity 1500ms;
+    opacity:0;
+}
+
+.box .footer .autosave {
+    float: left;
+    font-size: 90%;
+    margin: 5px 0px 5px 0;
+}
+
+.lbcontainer {
+  vertical-align: baseline;
+  position: relative;
+  cursor: pointer;
+  padding: 6px 10px;
+  padding-left: 35px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.lbcontainer input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #eee;
+  border: 1px solid #999;
+  color: white;
+  cursor: pointer;
+}
+
+/* On mouse-over, add a grey background color */
+.lbcontainer:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+/* When the checkbox is checked, add a blue background */
+.lbcontainer input:checked ~ .checkmark {
+  background-color: orangered;
+}
+
+/* On mouse-over, add a grey background color */
+.lbcontainer:hover input:checked ~ .checkmark {
+  background-color: red;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Show the checkmark when checked */
+.lbcontainer input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Style the checkmark/indicator */
+.lbcontainer .checkmark:after {
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
 }
