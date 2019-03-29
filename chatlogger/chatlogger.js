@@ -46,11 +46,36 @@ var loginPrompt = function () {
         output: process.stdout
     });
     rl.question('Steam Username: ', (value) => {
-        steamUserName = value;
-        rl.question('Steam Password: ', (value) => {
-            loginToSteam({username:steamUserName,password:value,rememberPassword:config.saveLoginData});
-            rl.close();
+        rl.stdoutMuted = true; //Don't show password.
+        rl.query = 'Steam Password: ';
+        rl.question(rl.query, (value) => {
+            rl.stdoutMuted = false;
+            rl.query = 'Remember Password (Y/N): ';
+            rl.question(rl.query, (value) => {
+                steamUserName = rl.history[2];
+                let pass = rl.history[1];
+                let remember = !(/N|0/ig.test(value));
+                rl.close();
+                loginToSteam({
+                    username:steamUserName,
+                    password:pass,
+                    rememberPassword:remember
+                });
+            });
         });
+        //Password Mask, pretty hacky.
+        rl._writeToOutput = function _writeToOutput(stringToWrite) {
+            let tempString = stringToWrite;
+            if(rl.stdoutMuted) {
+                let index = stringToWrite.indexOf(rl.query);
+                if(index > -1) {
+                    tempString = rl.query+stringToWrite.slice(index+rl.query.length).replace(/[A-Za-z0-9]/g, '*');
+                } else {
+                    tempString = stringToWrite.replace(/[A-Za-z0-9]/g, '*');
+                }
+            }
+            rl.output.write(tempString);
+        };
     });
 };
 var sgPrompt = function (callback) {
@@ -110,8 +135,12 @@ function runApp() {
     getLogData();
 }
 
-function loginToSteam(loginData) {
+async function loginToSteam(loginData) {
     if(loginData !== null) {
+        if(loginData.hasOwnProperty('key')) {
+            //Reverse compatablity.
+            loginData.loginKey = loginData.key;
+        }
         if('username' in loginData) { 
             steamUserName = loginData.username;
             if('password' in loginData) {
@@ -133,10 +162,10 @@ function loginToSteam(loginData) {
                     "logonID": 350
                 });
                 return;
-            } else if('key' in loginData) {
+            } else if('loginKey' in loginData) {
                 client.logOn({
                     "accountName": loginData.username,
-                    "loginKey": loginData.key,
+                    "loginKey": loginData.loginKey,
                     "rememberPassword": true,
                     "logonID": 350
                 });
@@ -144,37 +173,26 @@ function loginToSteam(loginData) {
             }
         } else if(config.saveLoginData) {
             if(keytar) {
+                console.log("Getting username from keytar. ");
                 //Get username from keytar
-                keytar.getPassword(scriptFileName, "username").then(
-                    (result) => {
-                        if(result) {
-                            steamUserName = result;
-                            keytar.getPassword(scriptFileName, "loginKey").then(
-                                (result) => {
-                                    if(result) {
-                                        loginToSteam({username:steamUserName,key:result});
-                                    } else {
-                                        //Password not found login prompt time.
-                                        console.log("Login key not found, reprompting.");
-                                        loginToSteam(null);
-                                    }
-                                },
-                                (err) => {
-                                    log.error(err);
-                                    loginToSteam(null);
-                                }
-                            );
-                        } else {
-                            //Username not found login prompt time.
-                            console.log("Login key not found, reprompting.");
-                            loginToSteam(null);
+                keytar.findCredentials(scriptFileName).then(function (result) {
+                    //Convert list to something usable.
+                    if(result) {
+                        let tmpLoginData = {};
+                        result.forEach((value) => {
+                            tmpLoginData[value.account] = value.password;
+                        });
+                        if(tmpLoginData.hasOwnProperty('username') && tmpLoginData.hasOwnProperty('loginKey')) {
+                            steamUserName = tmpLoginData.username;
+                            loginToSteam(tmpLoginData);
+                            return;
                         }
-                    },
-                    (err) => {
-                        log.error(err);
-                        loginToSteam(null);
                     }
-                );
+                    console.log("Login key not found, reprompting.");
+                    loginToSteam(null);
+                }).catch(function (er) {
+                    console.error(er);
+                });
                 return;
             } else {
                 //keytar isn't provided, let's find from file.
@@ -213,21 +231,19 @@ client.on('loginKey', function(key) {
     // Save the key.
     if(config.saveLoginData) {
         if(keytar) {
+            console.log("Login key storing in keytar.");
             keytar.setPassword(scriptFileName, "username", steamUserName);
             keytar.setPassword(scriptFileName, "loginKey", key);
             console.log("Login key stored.");
         } else {
-            fs.writeFileSync(path.join(logdataDir, "loginData.json"), JSON.stringify({key:key,username:steamUserName}, null, 2));
+            fs.writeFileSync(path.join(logdataDir, "loginData.json"), JSON.stringify({loginKey:key,username:steamUserName}));
             console.log("Login key saved.");
         }
     }
 });
-
 client.on('error', function(err) {
 	// Some error occurred during logon
     if(err.eresult === 5) {
-        console.log("Invalid Password or loginKey, reprompting login.");
-        loginToSteam(null);
         //Remove old instances of stored username/loginKey so we don't use bad creds next time.
         if(keytar) {
             keytar.deletePassword(scriptFileName, "username");
@@ -235,13 +251,11 @@ client.on('error', function(err) {
         } else {
             var loginDataFile = path.join(logdataDir, "loginData.json");
             if(fs.existsSync(loginDataFile)) {
-                fs.unlink(loginDataFile, function(err){
-                    if(err) {
-                        return console.log(err);
-                    }
-                });
+                fs.unlinkSync(loginDataFile);
             }
         }
+        console.log("Invalid Password or loginKey, reprompting login.");
+        loginToSteam(null);
     } else {
         console.log(err);
         fs.appendFile(path.join(logdataDir, "error.log"), (new Date()) + " : " + err.toString() + endOfLine, function (error) {
@@ -336,7 +350,7 @@ function userChatEx(friendSteam, sender, message) {
     });
     
     //return "- " + getFriendName(sender) + ": " + message.message;
-    console.log(formattedMessage);
+    console.log("[" + friendName + "]" + formattedMessage);
     return formattedMessage;
 }
 
@@ -496,4 +510,10 @@ function createDirIfNotExists(directory) {
     if(!fs.existsSync(directory)) {
         fs.mkdirSync(directory, {recursive: true});
     }
+}
+
+if(require.main === module) {
+    //chatlogger.js was ran directly from the cmd line.
+    console.log("Running ChatLogger.js in standalone mode.");
+    runApp();
 }

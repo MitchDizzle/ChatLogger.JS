@@ -6,7 +6,18 @@ This script has an Electron body which allows you to run the script like an appl
 This application will create a taskbar tray icon which can be used to exit the application, open the configured log folder, and open the settings window.
 
 # Downloading/Installing
-This script uses electron-forge to generate an installer and a release for windows. You do not need to run the installer as the entire application is within a zip archive. The installer will also create a shortcut on your desktop for easier use.
+
+This script uses electron-forge to generate an installer and a release for windows.  
+You do not need to run the installer as the entire application is within a zip archive.  
+The installer will also create a shortcut on your desktop for easier use.
+
+
+# Running without electron app (no taskbar or config windows)
+
+It's possible to run just the chatlogger script without making the taskbar button and windows.  
+The `chatlogger.bat` script will execute the chatlogger.js script and keep the command prompt open for aslong as it's alive.  
+You can make a shortcut to this script instead of having the electron app open.
+
 
 # Config/Data Files
 The main app uses [node-steam-user](https://github.com/DoctorMcKay/node-steam-user) in order to run an instance of a login to listen to sending and recieving messages and save them to configuarable files. When the app is first executed it will create a config file for editing, if you're using the gui you shouldn't have to worry about this file.
@@ -47,9 +58,11 @@ Second step would be downloading and uploading this script (download the source)
 
 Then execute these commands:
 ```shell
-npm install --only=prod
-node ./src/chatlogger.js
+npm run chatlogger-install
+npm run chatlogger
 ```
+NOTICE! if you do a npm start for the electron app this will make the chatlogger no longer work until you delete your node_modules and reinstall for the stadalone script.
+
 The script will start, create the config file under `./logdata/config.json` and ask you for login details.
 
 If edit the config be aware that the application will require a restart before using the changes.

@@ -18,25 +18,6 @@
         ],
         "sourceMaps": "inline"
       }
-    },
-    "production": {
-      "application/javascript": {
-        "presets": [
-          [
-            "env",
-            {
-              "targets": {
-                "electron": "4.0"
-              }
-            }
-          ],
-          "react"
-        ],
-        "plugins": [
-          "transform-async-to-generator"
-        ],
-        "sourceMaps": "none"
-      }
     }
   }
 }

@@ -20,7 +20,7 @@ app.on('window-all-closed', () => {
 
 const gotTheLock = app.requestSingleInstanceLock();
 
-const chatLogger = require('./chatlogger');
+const chatLogger = require('steam-chatlogger');
 
 const cmdArguments = () => {
     var argObj = {};
