@@ -1,7 +1,8 @@
 
 /* Used to convert the doc files to html pages that can be used in the windows */
-const fs = require('fs');
+const fs = require('fs-extra');
 const path = require('path');
+
 const showdown  = require('showdown');
 var converter = new showdown.Converter();
 converter.setOption('openLinksInNewWindow', 'true');

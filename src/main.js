@@ -20,7 +20,7 @@ app.on('window-all-closed', () => {
 
 const gotTheLock = app.requestSingleInstanceLock();
 
-const chatLogger = require('steam-chatlogger');
+const chatLogger = require('./chatlogger');
 
 const cmdArguments = () => {
     var argObj = {};
@@ -45,14 +45,6 @@ if(!gotTheLock) {
         }
     });
     
-    app.on('ready', () => {
-        createWindow();
-        createTray();
-        chatLogger.run();
-    });
-    
-    
-    chatLogger.setAppPath(app.getAppPath());
     chatLogger.setLoginPrompt(function () {
         electronPrompt({
             title: 'Steam Login',
@@ -87,6 +79,13 @@ if(!gotTheLock) {
             console.log(err);
             forceQuit();
         });
+    });
+    
+    app.on('ready', () => {
+        createWindow();
+        createTray();
+        chatLogger.setAppPath(process.resourcesPath);
+        chatLogger.run();
     });
 }
 
